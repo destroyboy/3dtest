@@ -15,7 +15,7 @@ int main()
   clock_t start = clock();
   {
     int i;
-    for ( i = 0; i < 20; i++)
+    for ( i = 0; i < 100; i++)
       model_viewRender( model );
   }
   clock_t stop = clock();

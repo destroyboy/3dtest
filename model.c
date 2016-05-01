@@ -212,7 +212,7 @@ void model_loadObj( Model_t *model, char *filename )
 }
 
 int model_triangleIntersectsWithSquare( Model_t *model, Triangle_t *t,
-  int left, int top, int length, int accept )
+  int left, int top, int length )
 {
   float dx[3] = { t->dx[0], t->dx[1], t->dx[2] };
   float dy[3] = { t->dy[0], t->dy[1], t->dy[2] };
@@ -220,13 +220,10 @@ int model_triangleIntersectsWithSquare( Model_t *model, Triangle_t *t,
 
   float Sx, Sy, det;
 
-  int i;
+  int i, accept = 0;
 
   for ( i = 0; i < 3; i++ )
   {
-    if ( accept & (1 << i) )
-      continue;
-
     if ( dx[i] > 0 && dy[i] > 0 ) // reject = bottom left
                                   // accept = top right
     {
@@ -237,6 +234,7 @@ int model_triangleIntersectsWithSquare( Model_t *model, Triangle_t *t,
       if ( det <= 0 )
         return -1;
       // test accept
+
       Sx = left+length;
       Sy = top;
       det = dx[i]*Sy - dy[i]*Sx + C[i];
@@ -302,10 +300,13 @@ void model_screenDrawRect( Model_t *model, int left,
 }
 
 void model_drawTriangle( Model_t *model, Triangle_t *t, int left, int top,
-                        int length, int color, int accept )
+                        int length )
 {
+  if ( !triangle_boundingBoxIntersectsSquare( t, left, top, length ) )
+    return;
+
   int intersect = model_triangleIntersectsWithSquare( model, t,
-                    left, top, length-1, accept );
+                    left, top, length-1 );
 
   if ( intersect == -1 )
   {
@@ -313,20 +314,20 @@ void model_drawTriangle( Model_t *model, Triangle_t *t, int left, int top,
   }
   else if ( intersect == 7 )
   {
-    model_screenDrawRect(model,left,top,length,length,color);
+    model_screenDrawRect(model,left,top,length,length,t->color);
   }
   else
   {
     length /= 2;
-    if ( length < 1 )
+    if ( length == 0 )
     {
       return;
     }
 
-    model_drawTriangle( model, t, left, top, length, color, accept);
-    model_drawTriangle( model, t, left+length,top,length, color, accept);
-    model_drawTriangle( model, t, left, top+length, length, color, accept);
-    model_drawTriangle( model, t, left+length,top+length, length, color, accept);
+    model_drawTriangle( model, t, left, top, length );
+    model_drawTriangle( model, t, left+length,top,length );
+    model_drawTriangle( model, t, left, top+length, length );
+    model_drawTriangle( model, t, left+length,top+length, length );
   }
 }
 
@@ -390,6 +391,67 @@ void triangle_Populate( Triangle_t *t, Model_t *model, int triangle_index )
   t->C[0] = -t->dx[0] * t->y[0] + t->dy[0] * t->x[0];
   t->C[1] = -t->dx[1] * t->y[1] + t->dy[1] * t->x[1];
   t->C[2] = -t->dx[2] * t->y[2] + t->dy[2] * t->x[2];
+
+  float xMin = 9999999;
+  float xMax = -9999999;
+  float yMin = 9999999;
+  float yMax = -9999999;
+
+  if ( t->Px < xMin )
+    xMin = t->Px;
+  if ( t->Qx < xMin )
+    xMin = t->Qx;
+  if ( t->Rx < xMin )
+    xMin = t->Rx;
+
+  if ( t->Py < yMin )
+    yMin = t->Py;
+  if ( t->Qy < yMin )
+    yMin = t->Qy;
+  if ( t->Ry < yMin )
+    yMin = t->Ry;
+
+  if ( t->Px > xMax )
+    xMax = t->Px;
+  if ( t->Qx > xMax )
+    xMax = t->Qx;
+  if ( t->Rx > xMax )
+    xMax = t->Rx;
+
+  if ( t->Py > yMax )
+    yMax = t->Py;
+  if ( t->Qy > yMax )
+    yMax = t->Qy;
+  if ( t->Ry > yMax )
+    yMax = t->Ry;
+
+  t->xMin = xMin;
+  t->xMax = xMax;
+  t->yMin = yMin;
+  t->yMax = yMax;
+
+  triangle_Normal( t, t->normal );
+
+    // normalize the z component of the normal!
+  float l = sqrt(t->normal[0]*t->normal[0]+
+                 t->normal[1]*t->normal[1]+
+                 t->normal[2]*t->normal[2]);
+
+// calculate a color based on the normal
+  t->color = 64+(int)(192*t->normal[2]/l);
+}
+
+int triangle_boundingBoxIntersectsSquare( Triangle_t *t, int left, int top, int length )
+{
+  if ( t->xMin >= left + length )
+    return 0;
+  if ( t->xMax <= left )
+    return 0;
+  if ( t->yMin >= top + length )
+    return 0;
+  if ( t->yMax <= top  )
+    return 0;
+  return 1;
 }
 
 // length is trhe length in pixels of side of render target
@@ -401,23 +463,10 @@ void model_viewRender( Model_t *model )
     Triangle_t t;
     triangle_Populate( &t, model, i );
 
-    float normal[3];
-    //model_triangleNormal( model, normal, i);
-    triangle_Normal( &t, normal );
-
-    if (normal[2] < 0 )
-    {
+    if (t.normal[2] < 0 )
       continue;
-    }
 
-      // normalize the z component of the normal!
-    float l = sqrt(normal[0]*normal[0]+
-                   normal[1]*normal[1]+
-                   normal[2]*normal[2]);
-
-    // calculate a color based on the normal
-    int color = 64+(int)(192*normal[2]/l);
-    model_drawTriangle(model,&t,0,0,model->length, color, 0);
+    model_drawTriangle(model,&t,0,0,model->length );
   }
 }
 
