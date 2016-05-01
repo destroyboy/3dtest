@@ -209,27 +209,14 @@ void model_loadObj( Model_t *model, char *filename )
     }
   }
   while(!feof(f));
-
-
 }
 
-int model_triangleIntersectsWithSquare( Model_t *model, int triangle_index,
+int model_triangleIntersectsWithSquare( Model_t *model, Triangle_t *t,
   int left, int top, int length, int accept )
 {
-  //triangle_index = triangle_index % 100;
-  float Px = model->verts_screen[4*model->indexes[3*triangle_index+0]+0];
-  float Py = model->verts_screen[4*model->indexes[3*triangle_index+0]+1];
-
-  float Qx = model->verts_screen[4*model->indexes[3*triangle_index+1]+0];
-  float Qy = model->verts_screen[4*model->indexes[3*triangle_index+1]+1];
-
-  float Rx = model->verts_screen[4*model->indexes[3*triangle_index+2]+0];
-  float Ry = model->verts_screen[4*model->indexes[3*triangle_index+2]+1];
-
-  float dx[3] = { Qx - Px, Rx - Qx, Px - Rx };
-  float dy[3] = { Qy - Py, Ry - Qy, Py - Ry };
-  float x[3] = { Px, Qx, Rx };
-  float y[3] = { Py, Qy, Ry };
+  float dx[3] = { t->dx[0], t->dx[1], t->dx[2] };
+  float dy[3] = { t->dy[0], t->dy[1], t->dy[2] };
+  float C[3] = { t->C[0], t->C[1], t->C[2] };
 
   float Sx, Sy, det;
 
@@ -246,16 +233,13 @@ int model_triangleIntersectsWithSquare( Model_t *model, int triangle_index,
       // test reject
       Sx = left;
       Sy = top+length;
-      det = dx[i]*(Sy-y[i])-dy[i]*(Sx-x[i]);
-
+      det = dx[i]*Sy - dy[i]*Sx + C[i];
       if ( det <= 0 )
-      {
         return -1;
-      }
       // test accept
       Sx = left+length;
       Sy = top;
-      det = dx[i]*(Sy-y[i])-dy[i]*(Sx-x[i]);
+      det = dx[i]*Sy - dy[i]*Sx + C[i];
       if ( det > 0 )
         accept|=(1<<i);
     }
@@ -265,13 +249,13 @@ int model_triangleIntersectsWithSquare( Model_t *model, int triangle_index,
       // test reject
       Sx = left+length;
       Sy = top+length;
-      det = dx[i]*(Sy-y[i])-dy[i]*(Sx-x[i]);
+      det = dx[i]*Sy - dy[i]*Sx + C[i];
       if ( det <= 0 )
         return -1;
       // test accept
       Sx = left;
       Sy = top;
-      det = dx[i]*(Sy-y[i])-dy[i]*(Sx-x[i]);
+      det = dx[i]*Sy - dy[i]*Sx + C[i];
       if ( det > 0 )
         accept|=(1<<i);
     }
@@ -280,12 +264,12 @@ int model_triangleIntersectsWithSquare( Model_t *model, int triangle_index,
     {
       Sx = left;
       Sy = top;
-      det = dx[i]*(Sy-y[i])-dy[i]*(Sx-x[i]);
+      det = dx[i]*Sy - dy[i]*Sx + C[i];
       if ( det <= 0 )
         return -1;
       Sx = left+length;
       Sy = top+length;
-      det = dx[i]*(Sy-y[i])-dy[i]*(Sx-x[i]);
+      det = dx[i]*Sy - dy[i]*Sx + C[i];
       if ( det > 0 )
         accept|=(1<<i);
     }
@@ -294,12 +278,12 @@ int model_triangleIntersectsWithSquare( Model_t *model, int triangle_index,
     {
       Sx = left+length;
       Sy = top;
-      det = dx[i]*(Sy-y[i])-dy[i]*(Sx-x[i]);
+      det = dx[i]*Sy - dy[i]*Sx + C[i];
       if ( det <= 0 )
         return -1;
       Sx = left;
       Sy = top+length;
-      det = dx[i]*(Sy-y[i])-dy[i]*(Sx-x[i]);
+      det = dx[i]*Sy - dy[i]*Sx + C[i];
       if ( det > 0 )
         accept|=(1<<i);
     }
@@ -317,10 +301,10 @@ void model_screenDrawRect( Model_t *model, int left,
       model->screen[ y * model->length + x ] = color;
 }
 
-void model_drawTriangle( Model_t *model, int triangle_index, int left, int top,
+void model_drawTriangle( Model_t *model, Triangle_t *t, int left, int top,
                         int length, int color, int accept )
 {
-  int intersect = model_triangleIntersectsWithSquare( model, triangle_index,
+  int intersect = model_triangleIntersectsWithSquare( model, t,
                     left, top, length-1, accept );
 
   if ( intersect == -1 )
@@ -339,42 +323,73 @@ void model_drawTriangle( Model_t *model, int triangle_index, int left, int top,
       return;
     }
 
-    model_drawTriangle(
-      model, triangle_index, left,       top,        length, color, accept);
-    model_drawTriangle(
-      model, triangle_index, left+length,top,        length, color, accept);
-    model_drawTriangle(
-      model, triangle_index, left,       top+length, length, color, accept);
-    model_drawTriangle(
-      model, triangle_index, left+length,top+length, length, color, accept);
+    model_drawTriangle( model, t, left, top, length, color, accept);
+    model_drawTriangle( model, t, left+length,top,length, color, accept);
+    model_drawTriangle( model, t, left, top+length, length, color, accept);
+    model_drawTriangle( model, t, left+length,top+length, length, color, accept);
   }
 }
 
-void model_triangleNormal( Model_t *model, float normal[3], int triangle_index )
+void triangle_Normal( Triangle_t *t, float normal[3] )
 {
-  float Px = model->verts_screen[4*model->indexes[3*triangle_index+0]+0];
-  float Py = model->verts_screen[4*model->indexes[3*triangle_index+0]+1];
-  float Pz = model->verts_screen[4*model->indexes[3*triangle_index+0]+2];
+  float Ux = t->Qx - t->Px;
+  float Uy = t->Qy - t->Py;
+  float Uz = t->Qz - t->Pz;
 
-  float Qx = model->verts_screen[4*model->indexes[3*triangle_index+1]+0];
-  float Qy = model->verts_screen[4*model->indexes[3*triangle_index+1]+1];
-  float Qz = model->verts_screen[4*model->indexes[3*triangle_index+1]+2];
-
-  float Rx = model->verts_screen[4*model->indexes[3*triangle_index+2]+0];
-  float Ry = model->verts_screen[4*model->indexes[3*triangle_index+2]+1];
-  float Rz = model->verts_screen[4*model->indexes[3*triangle_index+2]+2];
-
-  float Ux = Qx - Px;
-  float Uy = Qy - Py;
-  float Uz = Qz - Pz;
-
-  float Vx = Rx - Px;
-  float Vy = Ry - Py;
-  float Vz = Rz - Pz;
+  float Vx = t->Rx - t->Px;
+  float Vy = t->Ry - t->Py;
+  float Vz = t->Rz - t->Pz;
 
   normal[ 0 ] = Uy * Vz - Uz * Vy;
   normal[ 1 ] = Uz * Vx - Ux * Vz;
   normal[ 2 ] = Ux * Vy - Uy * Vx;
+}
+
+void triangle_Populate( Triangle_t *t, Model_t *model, int triangle_index )
+{
+  t->Px = model->verts_screen[4*model->indexes[3*triangle_index+0]+0];
+  t->Py = model->verts_screen[4*model->indexes[3*triangle_index+0]+1];
+  t->Pz = model->verts_screen[4*model->indexes[3*triangle_index+0]+2];
+
+  t->Qx = model->verts_screen[4*model->indexes[3*triangle_index+1]+0];
+  t->Qy = model->verts_screen[4*model->indexes[3*triangle_index+1]+1];
+  t->Qz = model->verts_screen[4*model->indexes[3*triangle_index+1]+2];
+
+  t->Rx = model->verts_screen[4*model->indexes[3*triangle_index+2]+0];
+  t->Ry = model->verts_screen[4*model->indexes[3*triangle_index+2]+1];
+  t->Rz = model->verts_screen[4*model->indexes[3*triangle_index+2]+2];
+
+  t->x[0] = t->Px;
+  t->x[1] = t->Qx;
+  t->x[2] = t->Rx;
+
+  t->y[0] = t->Py;
+  t->y[1] = t->Qy;
+  t->y[2] = t->Ry;
+
+  t->PQx = t->Qx - t->Px;
+  t->PQy = t->Qy - t->Py;
+  t->PQz = t->Qz - t->Pz;
+
+  t->QRx = t->Rx - t->Qx;
+  t->QRy = t->Ry - t->Qy;
+  t->QRz = t->Rz - t->Qz;
+
+  t->RPx = t->Px - t->Rx;
+  t->RPy = t->Py - t->Ry;
+  t->RPz = t->Pz - t->Rz;
+
+  t->dx[0] = t->PQx;
+  t->dx[1] = t->QRx;
+  t->dx[2] = t->RPx;
+
+  t->dy[0] = t->PQy;
+  t->dy[1] = t->QRy;
+  t->dy[2] = t->RPy;
+
+  t->C[0] = -t->dx[0] * t->y[0] + t->dy[0] * t->x[0];
+  t->C[1] = -t->dx[1] * t->y[1] + t->dy[1] * t->x[1];
+  t->C[2] = -t->dx[2] * t->y[2] + t->dy[2] * t->x[2];
 }
 
 // length is trhe length in pixels of side of render target
@@ -383,8 +398,12 @@ void model_viewRender( Model_t *model )
   int i;
   for (i = 0; i < model->tCount; i++)
   {
+    Triangle_t t;
+    triangle_Populate( &t, model, i );
+
     float normal[3];
-    model_triangleNormal( model, normal, i);
+    //model_triangleNormal( model, normal, i);
+    triangle_Normal( &t, normal );
 
     if (normal[2] < 0 )
     {
@@ -398,7 +417,7 @@ void model_viewRender( Model_t *model )
 
     // calculate a color based on the normal
     int color = 64+(int)(192*normal[2]/l);
-    model_drawTriangle(model,i,0,0,model->length, color, 0);
+    model_drawTriangle(model,&t,0,0,model->length, color, 0);
   }
 }
 
