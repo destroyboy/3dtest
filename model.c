@@ -191,7 +191,9 @@ void model_loadObj( Model_t *model, char *filename )
   float v[3];
   do
   {
-    fgets( buf, 256, f );
+    char *b = fgets( buf, 256, f );
+    if ( b == NULL )
+      break;
     sscanf( buf, "%s %f %f %f", &command[0], &v[0], &v[1], &v[2] );
     //printf("%s %f %f %f\n", command, v[0], v[1], v[2] );
     switch( command[0] )
