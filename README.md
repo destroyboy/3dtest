@@ -2,6 +2,7 @@
 triangle rasterizer
 
 Based on [this article.](https://software.intel.com/en-us/articles/rasterization-on-larrabee)
+I first started the rasterizer in javascript [here](http://biotagon.com/3dtest/)
 
 ## build
 
