@@ -6,7 +6,7 @@ I first started the rasterizer in javascript [here](http://biotagon.com/3dtest/)
 
 ## build
 
-Code is in C. There is a script called to build it on linux using gcc, otherwise it should be easy to build on another platform.
+Code is in C. There is a script to build it on linux using gcc, otherwise it should be easy to build on another platform.
 
 ##run
 
