@@ -6,6 +6,7 @@
 
 #include "matrix.h"
 #include "model.h"
+#include "triangle.h"
 
 // for a render target of 1024x1024, set length to 1024
 Model_t *model_Create( int length )
@@ -211,247 +212,86 @@ void model_loadObj( Model_t *model, char *filename )
   while(!feof(f));
 }
 
-int model_triangleIntersectsWithSquare( Model_t *model, Triangle_t *t,
-  int left, int top, int length )
+void model_screenDrawSquare( Model_t *model, int left, int top, int length, int color )
 {
-  float dx[3] = { t->dx[0], t->dx[1], t->dx[2] };
-  float dy[3] = { t->dy[0], t->dy[1], t->dy[2] };
-  float C[3] = { t->C[0], t->C[1], t->C[2] };
-
-  float Sx, Sy, det;
-
-  int i, accept = 0;
-
-  for ( i = 0; i < 3; i++ )
-  {
-    if ( dx[i] > 0 && dy[i] > 0 ) // reject = bottom left
-                                  // accept = top right
-    {
-      // test reject
-      Sx = left;
-      Sy = top+length;
-      det = dx[i]*Sy - dy[i]*Sx + C[i];
-      if ( det <= 0 )
-        return -1;
-      // test accept
-
-      Sx = left+length;
-      Sy = top;
-      det = dx[i]*Sy - dy[i]*Sx + C[i];
-      if ( det > 0 )
-        accept|=(1<<i);
-    }
-    else if ( dx[i] > 0 && dy[i] <= 0 ) // reject = bottom right
-                                    // accept = top left
-    {
-      // test reject
-      Sx = left+length;
-      Sy = top+length;
-      det = dx[i]*Sy - dy[i]*Sx + C[i];
-      if ( det <= 0 )
-        return -1;
-      // test accept
-      Sx = left;
-      Sy = top;
-      det = dx[i]*Sy - dy[i]*Sx + C[i];
-      if ( det > 0 )
-        accept|=(1<<i);
-    }
-    else if ( dx[i] <= 0 && dy[i] > 0 ) // reject = top left
-                                    // accept = bottom right
-    {
-      Sx = left;
-      Sy = top;
-      det = dx[i]*Sy - dy[i]*Sx + C[i];
-      if ( det <= 0 )
-        return -1;
-      Sx = left+length;
-      Sy = top+length;
-      det = dx[i]*Sy - dy[i]*Sx + C[i];
-      if ( det > 0 )
-        accept|=(1<<i);
-    }
-    else //if ( dx[i] <= 0 && dy[i] <= 0 ) // reject = top right
-                                     // accept = bottom left
-    {
-      Sx = left+length;
-      Sy = top;
-      det = dx[i]*Sy - dy[i]*Sx + C[i];
-      if ( det <= 0 )
-        return -1;
-      Sx = left;
-      Sy = top+length;
-      det = dx[i]*Sy - dy[i]*Sx + C[i];
-      if ( det > 0 )
-        accept|=(1<<i);
-    }
-  }
-  //console.log(accept);
-  return accept;
+  int y;
+  for ( y = top; y < top + length; y++ )
+    memset( &model->screen[ y * model->length + left ], color, length );
 }
 
-void model_screenDrawRect( Model_t *model, int left,
-  int top, int width, int height, int color )
-{
-  int x, y;
-  for ( y = top; y < top + height; y++ )
-    for ( x = left; x < left + width; x++ )
-      model->screen[ y * model->length + x ] = color;
-}
+// rasterize a 16x16 block - this needs to be optimized probably to a bunch
+// of special cases, by looking at accept can see how many edges need to be
+// checked also maybe look at dx and dy and handle seperate cases
 
-void model_drawTriangle( Model_t *model, Triangle_t *t, int left, int top,
-                        int length )
+void model_drawTriangle16( Model_t *model, Triangle_t *t,
+  int left, int top, int length, int accept )
 {
+  //model_screenDrawSquare(model,left,top,length,t->color);
   if ( !triangle_boundingBoxIntersectsSquare( t, left, top, length ) )
     return;
 
-  int intersect = model_triangleIntersectsWithSquare( model, t,
-                    left, top, length-1 );
+  accept |= triangle_intersectsWithSquare( t, left, top, length-1 );
 
-  if ( intersect == -1 )
+  if ( accept & 8  )
   {
     return;
   }
-  else if ( intersect == 7 )
+  else if ( accept == 7 )
   {
-    model_screenDrawRect(model,left,top,length,length,t->color);
+    model_screenDrawSquare(model,left,top,length,t->color);
   }
   else
   {
     length /= 2;
-    if ( length == 0 )
+    if ( length < 1 )
     {
       return;
     }
 
-    model_drawTriangle( model, t, left, top, length );
-    model_drawTriangle( model, t, left+length,top,length );
-    model_drawTriangle( model, t, left, top+length, length );
-    model_drawTriangle( model, t, left+length,top+length, length );
+    model_drawTriangle16( model, t, left, top, length, accept );
+    model_drawTriangle16( model, t, left+length,top,length, accept );
+    model_drawTriangle16( model, t, left, top+length, length, accept );
+    model_drawTriangle16( model, t, left+length,top+length, length, accept );
   }
 }
-
-void triangle_Normal( Triangle_t *t, float normal[3] )
+// recursively draw triangle up to the point we get to a 16x16 block
+// then call a specalized function
+void model_drawTriangle( Model_t *model, Triangle_t *t,
+  int left, int top, int length )
 {
-  float Ux = t->Qx - t->Px;
-  float Uy = t->Qy - t->Py;
-  float Uz = t->Qz - t->Pz;
+  if ( !triangle_boundingBoxIntersectsSquare( t, left, top, length ) )
+    return;
 
-  float Vx = t->Rx - t->Px;
-  float Vy = t->Ry - t->Py;
-  float Vz = t->Rz - t->Pz;
+  int accept = triangle_intersectsWithSquare( t, left, top, length-1 );
 
-  normal[ 0 ] = Uy * Vz - Uz * Vy;
-  normal[ 1 ] = Uz * Vx - Ux * Vz;
-  normal[ 2 ] = Ux * Vy - Uy * Vx;
-}
+  if ( accept & 8  )
+  {
+    return;
+  }
+  else if ( accept == 7 )
+  {
+    model_screenDrawSquare(model,left,top,length,t->color);
+  }
+  else
+  {
+    length /= 2;
+    if ( length < 1 )
+    {
+      return;
+    }
 
-void triangle_Populate( Triangle_t *t, Model_t *model, int triangle_index )
-{
-  t->Px = model->verts_screen[4*model->indexes[3*triangle_index+0]+0];
-  t->Py = model->verts_screen[4*model->indexes[3*triangle_index+0]+1];
-  t->Pz = model->verts_screen[4*model->indexes[3*triangle_index+0]+2];
-
-  t->Qx = model->verts_screen[4*model->indexes[3*triangle_index+1]+0];
-  t->Qy = model->verts_screen[4*model->indexes[3*triangle_index+1]+1];
-  t->Qz = model->verts_screen[4*model->indexes[3*triangle_index+1]+2];
-
-  t->Rx = model->verts_screen[4*model->indexes[3*triangle_index+2]+0];
-  t->Ry = model->verts_screen[4*model->indexes[3*triangle_index+2]+1];
-  t->Rz = model->verts_screen[4*model->indexes[3*triangle_index+2]+2];
-
-  t->x[0] = t->Px;
-  t->x[1] = t->Qx;
-  t->x[2] = t->Rx;
-
-  t->y[0] = t->Py;
-  t->y[1] = t->Qy;
-  t->y[2] = t->Ry;
-
-  t->PQx = t->Qx - t->Px;
-  t->PQy = t->Qy - t->Py;
-  t->PQz = t->Qz - t->Pz;
-
-  t->QRx = t->Rx - t->Qx;
-  t->QRy = t->Ry - t->Qy;
-  t->QRz = t->Rz - t->Qz;
-
-  t->RPx = t->Px - t->Rx;
-  t->RPy = t->Py - t->Ry;
-  t->RPz = t->Pz - t->Rz;
-
-  t->dx[0] = t->PQx;
-  t->dx[1] = t->QRx;
-  t->dx[2] = t->RPx;
-
-  t->dy[0] = t->PQy;
-  t->dy[1] = t->QRy;
-  t->dy[2] = t->RPy;
-
-  t->C[0] = -t->dx[0] * t->y[0] + t->dy[0] * t->x[0];
-  t->C[1] = -t->dx[1] * t->y[1] + t->dy[1] * t->x[1];
-  t->C[2] = -t->dx[2] * t->y[2] + t->dy[2] * t->x[2];
-
-  float xMin = 9999999;
-  float xMax = -9999999;
-  float yMin = 9999999;
-  float yMax = -9999999;
-
-  if ( t->Px < xMin )
-    xMin = t->Px;
-  if ( t->Qx < xMin )
-    xMin = t->Qx;
-  if ( t->Rx < xMin )
-    xMin = t->Rx;
-
-  if ( t->Py < yMin )
-    yMin = t->Py;
-  if ( t->Qy < yMin )
-    yMin = t->Qy;
-  if ( t->Ry < yMin )
-    yMin = t->Ry;
-
-  if ( t->Px > xMax )
-    xMax = t->Px;
-  if ( t->Qx > xMax )
-    xMax = t->Qx;
-  if ( t->Rx > xMax )
-    xMax = t->Rx;
-
-  if ( t->Py > yMax )
-    yMax = t->Py;
-  if ( t->Qy > yMax )
-    yMax = t->Qy;
-  if ( t->Ry > yMax )
-    yMax = t->Ry;
-
-  t->xMin = xMin;
-  t->xMax = xMax;
-  t->yMin = yMin;
-  t->yMax = yMax;
-
-  triangle_Normal( t, t->normal );
-
-    // normalize the z component of the normal!
-  float l = sqrt(t->normal[0]*t->normal[0]+
-                 t->normal[1]*t->normal[1]+
-                 t->normal[2]*t->normal[2]);
-
-// calculate a color based on the normal
-  t->color = 64+(int)(192*t->normal[2]/l);
-}
-
-int triangle_boundingBoxIntersectsSquare( Triangle_t *t, int left, int top, int length )
-{
-  if ( t->xMin >= left + length )
-    return 0;
-  if ( t->xMax <= left )
-    return 0;
-  if ( t->yMin >= top + length )
-    return 0;
-  if ( t->yMax <= top  )
-    return 0;
-  return 1;
+    if ( length > 8 )
+    {
+      model_drawTriangle( model, t, left, top, length );
+      model_drawTriangle( model, t, left+length,top,length );
+      model_drawTriangle( model, t, left, top+length, length );
+      model_drawTriangle( model, t, left+length,top+length, length );
+    }
+    else
+    {
+      model_drawTriangle16( model, t, left, top, length*2, accept );
+    }
+  }
 }
 
 // length is trhe length in pixels of side of render target

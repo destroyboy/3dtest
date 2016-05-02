@@ -41,15 +41,10 @@ void model_viewRotateY( Model_t *model, float radians );
 void model_viewRotateZ( Model_t *model, float radians );
 void model_viewEnd( Model_t *model );
 void model_createCube( Model_t *model );
-int  model_triangleIntersectsWithSquare( Model_t *model, Triangle_t *t,
-  int left, int top, int length );
-
+void model_screenDrawSquare( Model_t *model,
+  int left, int top, int length, int color );
 void model_drawTriangle( Model_t *model, Triangle_t *t, int left, int top,
   int length );
-void model_triangleNormal( Model_t *model, float normal[3], Triangle_t *t );
-int  triangle_boundingBoxIntersectsSquare( Triangle_t *t,
-  int left, int top, int length );
-
 void model_viewRender( Model_t *model );
 void model_viewSave( Model_t *model, char *filename );
 void model_loadObj( Model_t *m, char *filename );
