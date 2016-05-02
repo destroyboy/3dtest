@@ -26,6 +26,8 @@ There are a couple of defines in test_model.c so you can optionally draw a cube 
 
 ##bugs
 
+Hmmm, floating point. Normally fixed point is good, but it seemed like premature optimization as if I was going to use vector instructions then which kind of fixed point would work best. Maybe 32 bit floats might be as fast as 32 bit ints?
+
 No Z buffer! Due to limited time, I didn't implement a z-buffer even though it was asked for. To be honest I didn't see it was so important for such a simple renderer. Maybe that's an automatic fail, but the article talked a lot about vectorization and I spent a long time investigating that. If I had a z-buffer maybe I could have done perspective, but I didn't do perspective anyway. So... I just sort the triangles in z-order and draw back to front. So I never have to read from any buffers only write. This should increase the speed tremendously.
 
 No binning! This would improve the speed a lot normally but as there is no z-buffer and the triangles are drawn one at a time, then I don't think so.
