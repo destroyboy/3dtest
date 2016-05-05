@@ -97,8 +97,6 @@ static int compare_triangle_zs( const void *a, const void *b )
   int *t1 = (int *)a;
   int *t2 = (int *)b;
 
-  //printf("t1 = [%d %d %d] t2 = %d %d %d\n", t1[0],t1[1],t1[2],t2[0],t2[1],t2[2]);
-
   float t1_Pz = _m->verts_screen[4*t1[0]+2];
   float t1_Qz = _m->verts_screen[4*t1[1]+2];
   float t1_Rz = _m->verts_screen[4*t1[2]+2];
@@ -120,14 +118,70 @@ static void model_viewZOrder( Model_t *model )
   qsort( model->indexes, model->tCount, sizeof(int)*3, compare_triangle_zs );
 }
 
+
+static void dumpMask( uint64_t mask )
+{
+  int x, y;
+  for ( y = 0; y < 8; y++ )
+  {
+    for ( x = 0; x < 8; x++ )
+    {
+      printf( "%d", ( mask & ( ((uint64_t)1) << ( x + 8 * y ) ) ) != 0 );
+    }
+    printf("\n");
+  }
+  printf("\n");
+}
+
+// assign trangles to 64 bins (8x8 grid of bins)
+static void model_binAssign( Model_t *model )
+{
+  int bx, by;
+  int bl = model->length/8;
+  int i;
+  for ( i = 0; i < model->tCount; i++ )
+  {
+    uint64_t mask = 0;
+    Triangle_t t;
+    triangle_Populate( &t,
+      model->verts_screen[4*model->indexes[3*i+0]+0],
+      model->verts_screen[4*model->indexes[3*i+0]+1],
+      model->verts_screen[4*model->indexes[3*i+0]+2],
+
+      model->verts_screen[4*model->indexes[3*i+1]+0],
+      model->verts_screen[4*model->indexes[3*i+1]+1],
+      model->verts_screen[4*model->indexes[3*i+1]+2],
+
+      model->verts_screen[4*model->indexes[3*i+2]+0],
+      model->verts_screen[4*model->indexes[3*i+2]+1],
+      model->verts_screen[4*model->indexes[3*i+2]+2]
+    );
+
+    if (t.normal[2] < 0 )
+      goto assign_mask;
+
+    for ( by = 0; by < 8; by++ )
+    {
+      for ( bx = 0; bx < 8; bx++ )
+      {
+        if ( triangle_boundingBoxIntersectsSquare( &t, bx*bl, by*bl, bl ) )
+        {
+          mask |= ((uint64_t)1) << ( bx + by * 8 );
+        }
+      }
+    }
+assign_mask:
+    model->binmask[i] = mask;
+  }
+}
+
 void model_viewEnd( Model_t *model )
 {
   int i;
   for ( i = 0; i < model->vCount*4; i+=4 )
-  {
     matrix_Transform( model->m, model->verts, model->verts_screen, i );
-  }
   model_viewZOrder( model );
+  model_binAssign( model );
 }
 
 void model_createCube( Model_t *model )
@@ -226,9 +280,6 @@ void model_screenDrawSquare( Model_t *model, int left, int top, int length, int 
 void model_drawTriangle16( Model_t *model, Triangle_t *t,
   int left, int top, int length, int accept )
 {
-  //model_screenDrawSquare(model,left,top,length,t->color);
-  if ( !triangle_boundingBoxIntersectsSquare( t, left, top, length ) )
-    return;
 
   accept |= triangle_intersectsWithSquare( t, left, top, length-1 );
 
@@ -294,12 +345,17 @@ void model_drawTriangle( Model_t *model, Triangle_t *t,
   }
 }
 
-// length is trhe length in pixels of side of render target
 void model_viewRender( Model_t *model )
 {
   int i;
+  int bl = model->length/8;
   for (i = 0; i < model->tCount; i++)
   {
+    int bx, by;
+    uint64_t mask = model->binmask[i];
+    if ( mask == 0 )
+      continue;
+
     Triangle_t t;
     triangle_Populate( &t,
       model->verts_screen[4*model->indexes[3*i+0]+0],
@@ -315,10 +371,16 @@ void model_viewRender( Model_t *model )
       model->verts_screen[4*model->indexes[3*i+2]+2]
     );
 
-    if (t.normal[2] < 0 )
-      continue;
-
-    model_drawTriangle(model,&t,0,0,model->length );
+    for ( by = 0; by < 8; by++ )
+    {
+      for ( bx = 0; bx < 8; bx++ )
+      {
+        if ( ( mask & (((uint64_t)1)<<(bx+by*8)) ) != 0 )
+        {
+          model_drawTriangle(model,&t,bl*bx,bl*by,bl );
+        }
+      }
+    }
   }
 }
 

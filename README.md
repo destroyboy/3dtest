@@ -30,13 +30,13 @@ Hmmm, floating point. Normally fixed point is good, but it seemed like premature
 
 No Z buffer! Due to limited time, I didn't implement a z-buffer even though it was asked for. To be honest I didn't see it was so important for such a simple renderer. Maybe that's an automatic fail, but the article talked a lot about vectorization and I spent a long time investigating that. If I had a z-buffer maybe I could have done perspective, but I didn't do perspective anyway. So... I just sort the triangles in z-order and draw back to front. So I never have to read from any buffers only write. This should increase the speed tremendously.
 
-No binning! This would improve the speed a lot normally but as there is no z-buffer and the triangles are drawn one at a time, then I don't think so.
+Binning. There are 64 bins. However when I added binning it made no difference to the speed. It may make a difference once the inner stuff is optimized.
 
 If you turn on the cube test you can see there is a gap between the triangles. If the larabee article is correct then this is fixable. I think normally you sort the edges and order them in a certain way to make sure there are no gaps/overdraws but again this didn't seem to be mega important for this exercise. The test is there to show the problem.
 
 I took a lot of time trying to understand the vectorization. There is a huge setup cost on intel for using simd. You can't even multiply a vector by a scaler you must load the scaler multiple times into a vector. I think really you need to use assembly language to get the most benefit from simd, like in the article he gets a whole bunch of flags into one register. That was good although I kind of suspect that he overplayed the usefulness of the vector instructions. Also you can't make a vector of length 3 which would have been useful for what I used it for which was to do three edge calculations at once.
 
-##further work.
+##further work
 
 When you get down to drawing say a 16x16 square then it would be good to stop recursing. I factored out a function, but the function just recurses. It needs to be implemented without recursion and by taking separate code paths for different cases.
 

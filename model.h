@@ -1,6 +1,7 @@
 #ifndef MODEL_H
 #define MODEL_H
 
+#include <stdint.h>
 #include "triangle.h"
 
 #define MAX_VERT_INDEX (32768)
@@ -12,6 +13,7 @@ typedef struct
   float verts[MAX_VERT_INDEX];
   float verts_screen[MAX_VERT_INDEX];
   int   indexes[MAX_TRIANGLE_INDEX];
+  uint64_t binmask[MAX_TRIANGLE_INDEX];
   int   vCount;
   int   tCount;
   int   length;
