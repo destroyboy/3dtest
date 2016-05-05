@@ -3,60 +3,36 @@
 
 void triangle_Normal( Triangle_t *t, float normal[3] )
 {
-  float Ux = t->Qx - t->Px;
-  float Uy = t->Qy - t->Py;
-  float Uz = t->Qz - t->Pz;
+  float Ux = t->dx[0];
+  float Uy = t->dy[0];
+  float Uz = t->dz[0];
 
-  float Vx = t->Rx - t->Px;
-  float Vy = t->Ry - t->Py;
-  float Vz = t->Rz - t->Pz;
+  float Vx = -t->dx[2];
+  float Vy = -t->dy[2];
+  float Vz = -t->dz[2];
 
   normal[ 0 ] = Uy * Vz - Uz * Vy;
   normal[ 1 ] = Uz * Vx - Ux * Vz;
   normal[ 2 ] = Ux * Vy - Uy * Vx;
 }
 
-void triangle_Populate( Triangle_t *t, Model_t *model, int triangle_index )
+void triangle_Populate( Triangle_t *t, float Px, float Py, float Pz,
+                                       float Qx, float Qy, float Qz,
+                                       float Rx, float Ry, float Rz )
 {
-  t->Px = model->verts_screen[4*model->indexes[3*triangle_index+0]+0];
-  t->Py = model->verts_screen[4*model->indexes[3*triangle_index+0]+1];
-  t->Pz = model->verts_screen[4*model->indexes[3*triangle_index+0]+2];
+  t->x[0] = Px; t->x[1] = Qx; t->x[2] = Rx;
+  t->y[0] = Py; t->y[1] = Qy; t->y[2] = Ry;
 
-  t->Qx = model->verts_screen[4*model->indexes[3*triangle_index+1]+0];
-  t->Qy = model->verts_screen[4*model->indexes[3*triangle_index+1]+1];
-  t->Qz = model->verts_screen[4*model->indexes[3*triangle_index+1]+2];
+  //t->PQx = Qx - Px; t->PQy = Qy - Py; t->PQz = Qz - Pz;
+  //t->QRx = Rx - Qx; t->QRy = Ry - Qy; t->QRz = Rz - Qz;
+  //t->RPx = Px - Rx; t->RPy = Py - Ry; t->RPz = Pz - Rz;
 
-  t->Rx = model->verts_screen[4*model->indexes[3*triangle_index+2]+0];
-  t->Ry = model->verts_screen[4*model->indexes[3*triangle_index+2]+1];
-  t->Rz = model->verts_screen[4*model->indexes[3*triangle_index+2]+2];
+  t->dx[0] = Qx - Px; t->dy[0] = Qy - Py; t->dz[0] = Qz - Pz;
+  t->dx[1] = Rx - Qx; t->dy[1] = Ry - Qy; t->dz[1] = Rz - Qz;
+  t->dx[2] = Px - Rx; t->dy[2] = Py - Ry; t->dz[2] = Pz - Rz;
 
-  t->x[0] = t->Px;
-  t->x[1] = t->Qx;
-  t->x[2] = t->Rx;
-
-  t->y[0] = t->Py;
-  t->y[1] = t->Qy;
-  t->y[2] = t->Ry;
-
-  t->PQx = t->Qx - t->Px;
-  t->PQy = t->Qy - t->Py;
-  t->PQz = t->Qz - t->Pz;
-
-  t->QRx = t->Rx - t->Qx;
-  t->QRy = t->Ry - t->Qy;
-  t->QRz = t->Rz - t->Qz;
-
-  t->RPx = t->Px - t->Rx;
-  t->RPy = t->Py - t->Ry;
-  t->RPz = t->Pz - t->Rz;
-
-  t->dx[0] = t->PQx;
-  t->dx[1] = t->QRx;
-  t->dx[2] = t->RPx;
-
-  t->dy[0] = t->PQy;
-  t->dy[1] = t->QRy;
-  t->dy[2] = t->RPy;
+  //t->dx[0] = t->PQx; t->dx[1] = t->QRx; t->dx[2] = t->RPx;
+  //t->dy[0] = t->PQy; t->dy[1] = t->QRy; t->dy[2] = t->RPy;
 
   t->C[0] = -t->dx[0] * t->y[0] + t->dy[0] * t->x[0];
   t->C[1] = -t->dx[1] * t->y[1] + t->dy[1] * t->x[1];
@@ -67,33 +43,33 @@ void triangle_Populate( Triangle_t *t, Model_t *model, int triangle_index )
   float yMin = 9999999;
   float yMax = -9999999;
 
-  if ( t->Px < xMin )
-    xMin = t->Px;
-  if ( t->Qx < xMin )
-    xMin = t->Qx;
-  if ( t->Rx < xMin )
-    xMin = t->Rx;
+  if ( Px < xMin )
+    xMin = Px;
+  if ( Qx < xMin )
+    xMin = Qx;
+  if ( Rx < xMin )
+    xMin = Rx;
 
-  if ( t->Py < yMin )
-    yMin = t->Py;
-  if ( t->Qy < yMin )
-    yMin = t->Qy;
-  if ( t->Ry < yMin )
-    yMin = t->Ry;
+  if ( Py < yMin )
+    yMin = Py;
+  if ( Qy < yMin )
+    yMin = Qy;
+  if ( Ry < yMin )
+    yMin = Ry;
 
-  if ( t->Px > xMax )
-    xMax = t->Px;
-  if ( t->Qx > xMax )
-    xMax = t->Qx;
-  if ( t->Rx > xMax )
-    xMax = t->Rx;
+  if ( Px > xMax )
+    xMax = Px;
+  if ( Qx > xMax )
+    xMax = Qx;
+  if ( Rx > xMax )
+    xMax = Rx;
 
-  if ( t->Py > yMax )
-    yMax = t->Py;
-  if ( t->Qy > yMax )
-    yMax = t->Qy;
-  if ( t->Ry > yMax )
-    yMax = t->Ry;
+  if ( Py > yMax )
+    yMax = Py;
+  if ( Qy > yMax )
+    yMax = Qy;
+  if ( Ry > yMax )
+    yMax = Ry;
 
   t->xMin = xMin;
   t->xMax = xMax;

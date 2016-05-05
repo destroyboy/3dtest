@@ -21,12 +21,12 @@ void matrix_Identity( float m[16] )
 void matrix_Scale( float *m, float x, float y, float z )
 {
   m[1]  = m[2]  = m[3]  = m[4]  = 0.0;
-	m[6]  = m[7]  = m[8]  = m[9]  = 0.0;
-	m[11] = m[12] = m[13] = m[14] = 0.0;
-	m[15]                         = 1.0;
-	m[0]                          = x;
-	m[5]                          = y;
-	m[10]                         = z;
+  m[6]  = m[7]  = m[8]  = m[9]  = 0.0;
+  m[11] = m[12] = m[13] = m[14] = 0.0;
+  m[15]                         = 1.0;
+  m[0]                          = x;
+  m[5]                          = y;
+  m[10]                         = z;
 }
 
 void matrix_Translate( float m[16], float x, float y, float z )

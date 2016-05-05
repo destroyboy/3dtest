@@ -301,7 +301,19 @@ void model_viewRender( Model_t *model )
   for (i = 0; i < model->tCount; i++)
   {
     Triangle_t t;
-    triangle_Populate( &t, model, i );
+    triangle_Populate( &t,
+      model->verts_screen[4*model->indexes[3*i+0]+0],
+      model->verts_screen[4*model->indexes[3*i+0]+1],
+      model->verts_screen[4*model->indexes[3*i+0]+2],
+
+      model->verts_screen[4*model->indexes[3*i+1]+0],
+      model->verts_screen[4*model->indexes[3*i+1]+1],
+      model->verts_screen[4*model->indexes[3*i+1]+2],
+
+      model->verts_screen[4*model->indexes[3*i+2]+0],
+      model->verts_screen[4*model->indexes[3*i+2]+1],
+      model->verts_screen[4*model->indexes[3*i+2]+2]
+    );
 
     if (t.normal[2] < 0 )
       continue;

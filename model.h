@@ -1,6 +1,8 @@
 #ifndef MODEL_H
 #define MODEL_H
 
+#include "triangle.h"
+
 #define MAX_VERT_INDEX (32768)
 #define MAX_TRIANGLE_INDEX (16384)
 
@@ -16,18 +18,6 @@ typedef struct
   unsigned char screen[1];
 }
 Model_t;
-
-typedef struct
-{
-  float Px, Py, Pz, Qx, Qy, Qz, Rx, Ry, Rz;
-  float x[3],y[3],dx[3],dy[3];
-  float PQx, PQy, PQz, QRx, QRy, QRz, RPx, RPy, RPz;
-  float C[3];
-  float xMin, xMax, yMin, yMax;
-  float normal[3];
-  int   color;
-}
-Triangle_t;
 
 // for a render target of 1024x1024, set length to 1024
 Model_t *model_Create( int length );
