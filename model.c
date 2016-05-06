@@ -298,6 +298,9 @@ void model_drawTriangle4x4( Model_t *model, Triangle_t *t,
       return;
     }
 
+    int edge0 = 0;
+    int edge1 = 1;
+
     switch ( accept )
     {
       case 0 :
@@ -306,128 +309,146 @@ void model_drawTriangle4x4( Model_t *model, Triangle_t *t,
         float dx[3] = { t->dx[0], t->dx[1], t->dx[2] };
         float dy[3] = { t->dy[0], t->dy[1], t->dy[2] };
         float C[3]  = { t->C[0],  t->C[1],  t->C[2]  };
-        for ( Sy = top; Sy < top + 4; Sy++ )
-        {
-          for ( Sx = left; Sx < left + 4; Sx++ )
-          {
-            float det[3] = { dx[0]*Sy - dy[0]*Sx + C[0],
-                             dx[1]*Sy - dy[1]*Sx + C[1],
-                             dx[2]*Sy - dy[2]*Sx + C[2]};
+        float det[3] = { dx[0]*top - dy[0]*left + C[0],
+                         dx[1]*top - dy[1]*left + C[1],
+                         dx[2]*top - dy[2]*left + C[2]};
+        unsigned char *screen = &model->screen[top*model->length+left];
+        int width = model->length;
+        int color = t->color;
+        int i = 0;
 
+        for ( Sy = 4; Sy > 0; Sy-- )
+        {
+          for ( Sx = 4; Sx > 0; Sx-- )
+          {
             if ( det[0] > 0 && det[1] > 0 && det[2] > 0 )
-               model->screen[ Sy * model->length + Sx ] = t->color;
+               screen[ i ] = color;
+            det[0] -= dy[0];
+            det[1] -= dy[1];
+            det[2] -= dy[2];
+            i++;
           }
+          det[0] += dx[0] + 4*dy[0];
+          det[1] += dx[1] + 4*dy[1];
+          det[2] += dx[2] + 4*dy[2];
+          i += width - 4;
         }
         break;
       }
-      case 4 :
+      case 1 : //edge0 = 1; edge1 = 2;
+        edge0++;
+      case 2 : //edge0 = 0; edge1 = 2;
+        edge1++;
+      case 4 : //edge0 = 0; edge1 = 1;
       {
-        int Sx, Sy;
-        float dx[2] = { t->dx[0], t->dx[1] };
-        float dy[2] = { t->dy[0], t->dy[1] };
-        float C[2]  = { t->C[0],  t->C[1]  };
-        for ( Sy = top; Sy < top + 4; Sy++ )
+        float dx[2] = { t->dx[edge0], t->dx[edge1] };
+        float dy[2] = { t->dy[edge0], t->dy[edge1] };
+        float C[2]  = { t->C[edge0],  t->C[edge1]  };
+        int color = t->color;
+        unsigned char *screen = &model->screen[top*model->length+left];
+        int width = model->length;
+        float det[2] = { dx[0]*top - dy[0]*left + C[0],
+                         dx[1]*top - dy[1]*left + C[1] };
+        int Sy, i = 0;
+        for ( Sy = 4; Sy > 0; Sy-- )
         {
-          for ( Sx = left; Sx < left + 4; Sx++ )
-          {
-            float det[2] = { dx[0]*Sy - dy[0]*Sx + C[0],
-                             dx[1]*Sy - dy[1]*Sx + C[1] };
+          uint32_t pixel4 = *((uint32_t*)&screen[i]);
 
-            if ( det[0] > 0 && det[1] > 0 )
-               model->screen[ Sy * model->length + Sx ] = t->color;
+          if ( det[0] > 0 && det[1] > 0 )
+          {
+              pixel4 &= 0xffffff00;
+              pixel4 |= color<<0;
           }
+
+          det[0] -= dy[0];
+          det[1] -= dy[1];
+
+          if ( det[0] > 0 && det[1] > 0 )
+          {
+            pixel4 &= 0xffff00ff;
+            pixel4 |= color<<8;
+          }
+
+          det[0] -= dy[0];
+          det[1] -= dy[1];
+
+          if ( det[0] > 0 && det[1] > 0 )
+          {
+            pixel4 &= 0xff00ffff;
+            pixel4 |= color<<16;
+          }
+
+          det[0] -= dy[0];
+          det[1] -= dy[1];
+
+          if ( det[0] > 0 && det[1] > 0 )
+          {
+            pixel4 &= 0x00ffffff;
+            pixel4 |= color<<24;
+          }
+
+          *((uint32_t*)&screen[i]) = pixel4;
+
+          det[0] += dx[0] + 3*dy[0];
+          det[1] += dx[1] + 3*dy[1];
+          i+= width;
         }
         break;
       }
-      case 2 :
+      case 1|2 : // edge 2
+        edge0++;
+        //fallthrough
+      case 1|4 : // edge 1
+        edge0++;
+        //fallthrough
+      case 2|4 : // edge 0
       {
-        int Sx, Sy;
-        float dx[2] = { t->dx[0], t->dx[2] };
-        float dy[2] = { t->dy[0], t->dy[2] };
-        float C[2]  = { t->C[0],  t->C[2]  };
-        for ( Sy = top; Sy < top + 4; Sy++ )
+        float dx = t->dx[edge0];
+        float dy = t->dy[edge0];
+        float C  = t->C[edge0];
+        int color = t->color;
+        unsigned char *screen = &model->screen[top*model->length+left];
+        int width = model->length;
+        float det = dx*top - dy*left + C;
+        int Sy, i = 0;
+        for ( Sy = 4; Sy > 0; Sy-- )
         {
-          for ( Sx = left; Sx < left + 4; Sx++ )
-          {
-            float det[2] = { dx[0]*Sy - dy[0]*Sx + C[0],
-                             dx[1]*Sy - dy[1]*Sx + C[1] };
+          uint32_t pixel4 = *((uint32_t*)&screen[i]);
 
-            if ( det[0] > 0 && det[1] > 0 )
-               model->screen[ Sy * model->length + Sx ] = t->color;
-          }
-        }
-        break;
-      }
-      case 1 :
-      {
-        int Sx, Sy;
-        float dx[2] = { t->dx[1], t->dx[2] };
-        float dy[2] = { t->dy[1], t->dy[2] };
-        float C[2]  = { t->C[1],  t->C[2]  };
-        for ( Sy = top; Sy < top + 4; Sy++ )
-        {
-          for ( Sx = left; Sx < left + 4; Sx++ )
+          if ( det > 0 )
           {
-            float det[2] = { dx[0]*Sy - dy[0]*Sx + C[0],
-                             dx[1]*Sy - dy[1]*Sx + C[1] };
-
-            if ( det[0] > 0 && det[1] > 0 )
-               model->screen[ Sy * model->length + Sx ] = t->color;
+              pixel4 &= 0xffffff00;
+              pixel4 |= color<<0;
           }
-        }
-        break;
-      }
-      case 2|4 :
-      {
-        int Sx, Sy;
-        float dx = t->dx[0];
-        float dy = t->dy[0];
-        float C  = t->C[0];
-        for ( Sy = top; Sy < top + 4; Sy++ )
-        {
-          for ( Sx = left; Sx < left + 4; Sx++ )
+
+          det -= dy;
+
+          if ( det > 0 )
           {
-            float det = dx*Sy - dy*Sx + C;
-
-            if ( det > 0 )
-               model->screen[ Sy * model->length + Sx ] = t->color;
+            pixel4 &= 0xffff00ff;
+            pixel4 |= color<<8;
           }
-        }
-        break;
-      }
-      case 1|4 :
-      {
-        int Sx, Sy;
-        float dx = t->dx[1];
-        float dy = t->dy[1];
-        float C  = t->C[1];
-        for ( Sy = top; Sy < top + 4; Sy++ )
-        {
-          for ( Sx = left; Sx < left + 4; Sx++ )
+
+          det -= dy;
+
+          if ( det > 0 )
           {
-            float det = dx*Sy - dy*Sx + C;
-
-            if ( det > 0 )
-               model->screen[ Sy * model->length + Sx ] = t->color;
+            pixel4 &= 0xff00ffff;
+            pixel4 |= color<<16;
           }
-        }
-        break;
-      }
-      case 1|2 :
-      {
-        int Sx, Sy;
-        float dx = t->dx[2];
-        float dy = t->dy[2];
-        float C  = t->C[2];
-        for ( Sy = top; Sy < top + 4; Sy++ )
-        {
-          for ( Sx = left; Sx < left + 4; Sx++ )
+
+          det -= dy;
+
+          if ( det > 0 )
           {
-            float det = dx*Sy - dy*Sx + C;
-
-            if ( det > 0 )
-               model->screen[ Sy * model->length + Sx ] = t->color;
+            pixel4 &= 0x00ffffff;
+            pixel4 |= color<<24;
           }
+
+          *((uint32_t*)&screen[i]) = pixel4;
+
+          det += dx + 3*dy;
+          i+= width;
         }
         break;
       }
