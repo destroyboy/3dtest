@@ -22,7 +22,7 @@ The teddy takes about 2 seconds to render 100 times. Which is 200 times slower t
 
 ##options
 
-There are a couple of defines in test_model.c so you can optionally draw a cube or turn on the SIMD function that I wrote that is slower than the non-simd function!
+There are a couple of defines in test_model.c so you can optionally draw a cube or turn on the SIMD function that I wrote that is slower than the non-simd function.
 
 ##bugs
 
@@ -30,7 +30,7 @@ Hmmm, floating point. Normally fixed point is good, but it seemed like premature
 
 No Z buffer! Due to limited time, I didn't implement a z-buffer even though it was asked for. To be honest I didn't see it was so important for such a simple renderer. Maybe that's an automatic fail, but the article talked a lot about vectorization and I spent a long time investigating that. If I had a z-buffer maybe I could have done perspective, but I didn't do perspective anyway. So... I just sort the triangles in z-order and draw back to front. So I never have to read from any buffers only write. This should increase the speed tremendously.
 
-Binning. There are 64 bins. However when I added binning it made no difference to the speed. It may make a difference once the inner stuff is optimized.
+Binning. There are 64 bins. However when I added binning it made no difference to the speed.
 
 If you turn on the cube test you can see there is a gap between the triangles. If the larabee article is correct then this is fixable. I think normally you sort the edges and order them in a certain way to make sure there are no gaps/overdraws but again this didn't seem to be mega important for this exercise. The test is there to show the problem.
 
@@ -38,6 +38,4 @@ I took a lot of time trying to understand the vectorization. There is a huge set
 
 ##further work
 
-When you get down to drawing say a 16x16 square then it would be good to stop recursing. I factored out a function, but the function just recurses. It needs to be implemented without recursion and by taking separate code paths for different cases.
-
-Pipeline, well exactly, there is really no pipeline. Drawing one triangle at a time is stupid.
+Pipeline, well exactly, there is really no pipeline. Drawing one triangle at a time is stupid (or is it?!)

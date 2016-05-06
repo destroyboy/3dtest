@@ -7,9 +7,9 @@ void triangle_Normal( Triangle_t *t, float normal[3] )
   float Uy = t->dy[0];
   float Uz = t->dz[0];
 
-  float Vx = -t->dx[2];
-  float Vy = -t->dy[2];
-  float Vz = -t->dz[2];
+  float Vx = -t->dx[2]; //t->Rx - t->Px;
+  float Vy = -t->dy[2];//t->Ry - t->Py;
+  float Vz = -t->dz[2];//t->Rz - t->Pz;
 
   normal[ 0 ] = Uy * Vz - Uz * Vy;
   normal[ 1 ] = Uz * Vx - Ux * Vz;
@@ -236,3 +236,21 @@ int triangle_intersectsWithSquare( Triangle_t *t, int left, int top, int length 
   return accept;
 }
 #endif /*USE_EXPLICIT_SIMD*/
+
+// follow convention of rectangle function
+// return 8 for NO, 7 for YES
+int triangle_containsPoint( Triangle_t *t, int Sx, int Sy )
+{
+  float dx[3] = { t->dx[0], t->dx[1], t->dx[2] };
+  float dy[3] = { t->dy[0], t->dy[1], t->dy[2] };
+  float C[3]  = { t->C[0],  t->C[1],  t->C[2]  };
+
+  float det[3] = { dx[0]*Sy - dy[0]*Sx + C[0],
+                   dx[1]*Sy - dy[1]*Sx + C[1],
+                   dx[2]*Sy - dy[2]*Sx + C[2] };
+
+  if ( det[0] <= 0 || det[1] <= 0 || det[2] <= 0 )
+    return 8;
+
+    return 7;
+}

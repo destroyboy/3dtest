@@ -273,14 +273,13 @@ void model_screenDrawSquare( Model_t *model, int left, int top, int length, int 
     memset( &model->screen[ y * model->length + left ], color, length );
 }
 
-// rasterize a 16x16 block - this needs to be optimized probably to a bunch
+// rasterize a 4x4 block - this needs to be optimized probably to a bunch
 // of special cases, by looking at accept can see how many edges need to be
 // checked also maybe look at dx and dy and handle seperate cases
 
-void model_drawTriangle16( Model_t *model, Triangle_t *t,
+void model_drawTriangle4x4( Model_t *model, Triangle_t *t,
   int left, int top, int length, int accept )
 {
-
   accept |= triangle_intersectsWithSquare( t, left, top, length-1 );
 
   if ( accept & 8  )
@@ -299,13 +298,143 @@ void model_drawTriangle16( Model_t *model, Triangle_t *t,
       return;
     }
 
-    model_drawTriangle16( model, t, left, top, length, accept );
-    model_drawTriangle16( model, t, left+length,top,length, accept );
-    model_drawTriangle16( model, t, left, top+length, length, accept );
-    model_drawTriangle16( model, t, left+length,top+length, length, accept );
+    switch ( accept )
+    {
+      case 0 :
+      {
+        int Sx, Sy;
+        float dx[3] = { t->dx[0], t->dx[1], t->dx[2] };
+        float dy[3] = { t->dy[0], t->dy[1], t->dy[2] };
+        float C[3]  = { t->C[0],  t->C[1],  t->C[2]  };
+        for ( Sy = top; Sy < top + 4; Sy++ )
+        {
+          for ( Sx = left; Sx < left + 4; Sx++ )
+          {
+            float det[3] = { dx[0]*Sy - dy[0]*Sx + C[0],
+                             dx[1]*Sy - dy[1]*Sx + C[1],
+                             dx[2]*Sy - dy[2]*Sx + C[2]};
+
+            if ( det[0] > 0 && det[1] > 0 && det[2] > 0 )
+               model->screen[ Sy * model->length + Sx ] = t->color;
+          }
+        }
+        break;
+      }
+      case 4 :
+      {
+        int Sx, Sy;
+        float dx[2] = { t->dx[0], t->dx[1] };
+        float dy[2] = { t->dy[0], t->dy[1] };
+        float C[2]  = { t->C[0],  t->C[1]  };
+        for ( Sy = top; Sy < top + 4; Sy++ )
+        {
+          for ( Sx = left; Sx < left + 4; Sx++ )
+          {
+            float det[2] = { dx[0]*Sy - dy[0]*Sx + C[0],
+                             dx[1]*Sy - dy[1]*Sx + C[1] };
+
+            if ( det[0] > 0 && det[1] > 0 )
+               model->screen[ Sy * model->length + Sx ] = t->color;
+          }
+        }
+        break;
+      }
+      case 2 :
+      {
+        int Sx, Sy;
+        float dx[2] = { t->dx[0], t->dx[2] };
+        float dy[2] = { t->dy[0], t->dy[2] };
+        float C[2]  = { t->C[0],  t->C[2]  };
+        for ( Sy = top; Sy < top + 4; Sy++ )
+        {
+          for ( Sx = left; Sx < left + 4; Sx++ )
+          {
+            float det[2] = { dx[0]*Sy - dy[0]*Sx + C[0],
+                             dx[1]*Sy - dy[1]*Sx + C[1] };
+
+            if ( det[0] > 0 && det[1] > 0 )
+               model->screen[ Sy * model->length + Sx ] = t->color;
+          }
+        }
+        break;
+      }
+      case 1 :
+      {
+        int Sx, Sy;
+        float dx[2] = { t->dx[1], t->dx[2] };
+        float dy[2] = { t->dy[1], t->dy[2] };
+        float C[2]  = { t->C[1],  t->C[2]  };
+        for ( Sy = top; Sy < top + 4; Sy++ )
+        {
+          for ( Sx = left; Sx < left + 4; Sx++ )
+          {
+            float det[2] = { dx[0]*Sy - dy[0]*Sx + C[0],
+                             dx[1]*Sy - dy[1]*Sx + C[1] };
+
+            if ( det[0] > 0 && det[1] > 0 )
+               model->screen[ Sy * model->length + Sx ] = t->color;
+          }
+        }
+        break;
+      }
+      case 2|4 :
+      {
+        int Sx, Sy;
+        float dx = t->dx[0];
+        float dy = t->dy[0];
+        float C  = t->C[0];
+        for ( Sy = top; Sy < top + 4; Sy++ )
+        {
+          for ( Sx = left; Sx < left + 4; Sx++ )
+          {
+            float det = dx*Sy - dy*Sx + C;
+
+            if ( det > 0 )
+               model->screen[ Sy * model->length + Sx ] = t->color;
+          }
+        }
+        break;
+      }
+      case 1|4 :
+      {
+        int Sx, Sy;
+        float dx = t->dx[1];
+        float dy = t->dy[1];
+        float C  = t->C[1];
+        for ( Sy = top; Sy < top + 4; Sy++ )
+        {
+          for ( Sx = left; Sx < left + 4; Sx++ )
+          {
+            float det = dx*Sy - dy*Sx + C;
+
+            if ( det > 0 )
+               model->screen[ Sy * model->length + Sx ] = t->color;
+          }
+        }
+        break;
+      }
+      case 1|2 :
+      {
+        int Sx, Sy;
+        float dx = t->dx[2];
+        float dy = t->dy[2];
+        float C  = t->C[2];
+        for ( Sy = top; Sy < top + 4; Sy++ )
+        {
+          for ( Sx = left; Sx < left + 4; Sx++ )
+          {
+            float det = dx*Sy - dy*Sx + C;
+
+            if ( det > 0 )
+               model->screen[ Sy * model->length + Sx ] = t->color;
+          }
+        }
+        break;
+      }
+    }
   }
 }
-// recursively draw triangle up to the point we get to a 16x16 block
+// recursively draw triangle up to the point we get to a 4x4 block
 // then call a specalized function
 void model_drawTriangle( Model_t *model, Triangle_t *t,
   int left, int top, int length )
@@ -331,7 +460,7 @@ void model_drawTriangle( Model_t *model, Triangle_t *t,
       return;
     }
 
-    if ( length > 8 )
+    if ( length > 2 )
     {
       model_drawTriangle( model, t, left, top, length );
       model_drawTriangle( model, t, left+length,top,length );
@@ -340,7 +469,7 @@ void model_drawTriangle( Model_t *model, Triangle_t *t,
     }
     else
     {
-      model_drawTriangle16( model, t, left, top, length*2, accept );
+      model_drawTriangle4x4( model, t, left, top, length*2, accept );
     }
   }
 }
