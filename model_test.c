@@ -28,7 +28,7 @@ int main()
   start = clock();
   {
     int i;
-    for ( i = 0; i < 200; i++)
+    for ( i = 0; i < 100; i++)
       model_screenDrawSquare( model, 0, 0, model->length, 0x00 );
   }
   stop = clock();
@@ -37,7 +37,7 @@ int main()
   start = clock();
   {
     int i;
-    for ( i = 0; i < 200; i++)
+    for ( i = 0; i < 100; i++)
       model_viewRender( model );
   }
   stop = clock();

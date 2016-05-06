@@ -16,9 +16,7 @@ There is a script which runs the test. It renders a teddy bear from teddy.obj in
 
 A file called teddy1024x1024.raw which is 1024x1024x8bit grayscale. If you change the dimensions of the render buffer then the filename changes i.e. teddy512x512.raw
 
-The test outputs some timings to stdout. It fills the buffer 100 times with pixels and outputs this time. Which on my little haswell netbook is 0.01 seconds. It's important to do absolute timings. And this test gives an idea just how fast it's possible to draw pixels. In this case the maximum is 104857600 pixels / second.
-
-The teddy takes about 2 seconds to render 100 times. Which is 200 times slower than the just filling the screen with a single color.
+The test outputs some timings to stdout. It fills the buffer 100 times with pixels and outputs this time. Which on my little haswell netbook is 0.01 seconds. It's important to do absolute timings. And this test gives an idea just how fast it's possible to draw pixels. The teddy takes 0.9 seconds which is 90x slower. 
 
 ##options
 
