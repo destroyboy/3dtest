@@ -10,6 +10,17 @@ typedef struct
 }
 Triangle_t;
 
+#define ACCEPT_NONE  (0)
+#define ACCEPT_EDGE0 (1<<0)
+#define ACCEPT_EDGE1 (1<<1)
+#define ACCEPT_EDGE2 (1<<2)
+#define REJECT_EDGEX (1<<3)
+
+#define CHECK_EDGE0 (ACCEPT_EDGE1|ACCEPT_EDGE2)
+#define CHECK_EDGE1 (ACCEPT_EDGE0|ACCEPT_EDGE2)
+#define CHECK_EDGE2 (ACCEPT_EDGE0|ACCEPT_EDGE1)
+
+
 void triangle_Normal( Triangle_t *t, float normal[3] );
 void triangle_Populate( Triangle_t *t, float Px, float Py, float Pz,
   float Qx, float Qy, float Qz, float Rx, float Ry, float Rz);

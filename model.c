@@ -157,7 +157,7 @@ static void model_binAssign( Model_t *model )
       model->verts_screen[4*model->indexes[3*i+2]+2]
     );
 
-    if (t.normal[2] < 0 )
+    if ( t.normal[2] < 0 )
       goto assign_mask;
 
     for ( by = 0; by < 8; by++ )
@@ -294,16 +294,14 @@ void model_drawTriangle4x4( Model_t *model, Triangle_t *t,
   {
     length /= 2;
     if ( length < 1 )
-    {
       return;
-    }
 
     int edge0 = 0;
     int edge1 = 1;
 
     switch ( accept )
     {
-      case 0 :
+      case ACCEPT_NONE :
       {
         int Sx, Sy;
         float dx[3] = { t->dx[0], t->dx[1], t->dx[2] };
@@ -335,11 +333,13 @@ void model_drawTriangle4x4( Model_t *model, Triangle_t *t,
         }
         break;
       }
-      case 1 : //edge0 = 1; edge1 = 2;
+      case ACCEPT_EDGE0 : //edge0 = 1; edge1 = 2;
         edge0++;
-      case 2 : //edge0 = 0; edge1 = 2;
+        // fallthrough
+      case ACCEPT_EDGE1 : //edge0 = 0; edge1 = 2;
         edge1++;
-      case 4 : //edge0 = 0; edge1 = 1;
+        // fallthrough
+      case ACCEPT_EDGE2 : //edge0 = 0; edge1 = 1;
       {
         float dx[2] = { t->dx[edge0], t->dx[edge1] };
         float dy[2] = { t->dy[edge0], t->dy[edge1] };
@@ -395,13 +395,13 @@ void model_drawTriangle4x4( Model_t *model, Triangle_t *t,
         }
         break;
       }
-      case 1|2 : // edge 2
+      case CHECK_EDGE2 : // edge 2
         edge0++;
         //fallthrough
-      case 1|4 : // edge 1
+      case CHECK_EDGE1 : // edge 1
         edge0++;
         //fallthrough
-      case 2|4 : // edge 0
+      case CHECK_EDGE0 : // edge 0
       {
         float dx = t->dx[edge0];
         float dy = t->dy[edge0];
@@ -465,11 +465,11 @@ void model_drawTriangle( Model_t *model, Triangle_t *t,
 
   int accept = triangle_intersectsWithSquare( t, left, top, length-1 );
 
-  if ( accept & 8  )
+  if ( accept & REJECT_EDGEX  )
   {
     return;
   }
-  else if ( accept == 7 )
+  else if ( accept == (ACCEPT_EDGE0|ACCEPT_EDGE1|ACCEPT_EDGE2) )
   {
     model_screenDrawSquare(model,left,top,length,t->color);
   }

@@ -23,16 +23,9 @@ void triangle_Populate( Triangle_t *t, float Px, float Py, float Pz,
   t->x[0] = Px; t->x[1] = Qx; t->x[2] = Rx;
   t->y[0] = Py; t->y[1] = Qy; t->y[2] = Ry;
 
-  //t->PQx = Qx - Px; t->PQy = Qy - Py; t->PQz = Qz - Pz;
-  //t->QRx = Rx - Qx; t->QRy = Ry - Qy; t->QRz = Rz - Qz;
-  //t->RPx = Px - Rx; t->RPy = Py - Ry; t->RPz = Pz - Rz;
-
   t->dx[0] = Qx - Px; t->dy[0] = Qy - Py; t->dz[0] = Qz - Pz;
   t->dx[1] = Rx - Qx; t->dy[1] = Ry - Qy; t->dz[1] = Rz - Qz;
   t->dx[2] = Px - Rx; t->dy[2] = Py - Ry; t->dz[2] = Pz - Rz;
-
-  //t->dx[0] = t->PQx; t->dx[1] = t->QRx; t->dx[2] = t->RPx;
-  //t->dy[0] = t->PQy; t->dy[1] = t->QRy; t->dy[2] = t->RPy;
 
   t->C[0] = -t->dx[0] * t->y[0] + t->dy[0] * t->x[0];
   t->C[1] = -t->dx[1] * t->y[1] + t->dy[1] * t->x[1];
@@ -78,12 +71,12 @@ void triangle_Populate( Triangle_t *t, float Px, float Py, float Pz,
 
   triangle_Normal( t, t->normal );
 
-    // normalize the z component of the normal!
+  // normalize the z component of the normal!
   float l = sqrt(t->normal[0]*t->normal[0]+
                  t->normal[1]*t->normal[1]+
                  t->normal[2]*t->normal[2]);
 
-// calculate a color based on the normal
+  // calculate a color based on the normal
   t->color = 64+(int)(191*t->normal[2]/l);
 }
 
@@ -130,7 +123,7 @@ int triangle_intersectsWithSquareSimd( Triangle_t *t, int left, int top, int len
        ( dx3[1] <= 0 && dy3[1] <= 0 && det_tr[1] <= 0 ) ||
        ( dx3[2] <= 0 && dy3[2] <= 0 && det_tr[2] <= 0 ))
   {
-    return 8;
+    return REJECT_EDGEX;
   }
 
   if ( ( dx3[0] > 0 && dy3[0] > 0 && det_tr[0] > 0 ) ||
@@ -138,7 +131,7 @@ int triangle_intersectsWithSquareSimd( Triangle_t *t, int left, int top, int len
        ( dx3[0] <= 0 && dy3[0] > 0 && det_br[0] > 0 )||
        ( dx3[0] <= 0 && dy3[0] <= 0 && det_bl[0] > 0 ) )
   {
-    accept|=1;
+    accept|=ACCEPT_EDGE0;
   }
 
   if ( ( dx3[1] > 0 && dy3[1] > 0 && det_tr[1] > 0 ) ||
@@ -146,7 +139,7 @@ int triangle_intersectsWithSquareSimd( Triangle_t *t, int left, int top, int len
        ( dx3[1] <= 0 && dy3[1] > 0 && det_br[1] > 0 )||
        ( dx3[1] <= 0 && dy3[1] <= 0 && det_bl[1] > 0 ) )
   {
-    accept|=2;
+    accept|=ACCEPT_EDGE1;
   }
 
   if ( ( dx3[2] > 0 && dy3[2] > 0 && det_tr[2] > 0 ) ||
@@ -154,7 +147,7 @@ int triangle_intersectsWithSquareSimd( Triangle_t *t, int left, int top, int len
        ( dx3[2] <= 0 && dy3[2] > 0 && det_br[2] > 0 ) ||
        ( dx3[2] <= 0 && dy3[2] <= 0 && det_bl[2] > 0 ) )
   {
-    accept|=4;
+    accept|=ACCEPT_EDGE2;
   }
 
   return accept;
@@ -180,7 +173,7 @@ int triangle_intersectsWithSquare( Triangle_t *t, int left, int top, int length 
       Sy = top+length;
       det = dx[i]*Sy - dy[i]*Sx + C[i];
       if ( det <= 0 )
-        accept |= 8;
+        accept |= REJECT_EDGEX;
 
       Sx = left+length;
       Sy = top;
@@ -196,7 +189,7 @@ int triangle_intersectsWithSquare( Triangle_t *t, int left, int top, int length 
       Sy = top+length;
       det = dx[i]*Sy - dy[i]*Sx + C[i];
       if ( det <= 0 )
-        accept |= 8;
+        accept |= REJECT_EDGEX;
       // test accept
       Sx = left;
       Sy = top;
@@ -211,7 +204,7 @@ int triangle_intersectsWithSquare( Triangle_t *t, int left, int top, int length 
       Sy = top;
       det = dx[i]*Sy - dy[i]*Sx + C[i];
       if ( det <= 0 )
-        accept |= 8;
+        accept |= REJECT_EDGEX;
       Sx = left+length;
       Sy = top+length;
       det = dx[i]*Sy - dy[i]*Sx + C[i];
@@ -225,7 +218,7 @@ int triangle_intersectsWithSquare( Triangle_t *t, int left, int top, int length 
       Sy = top;
       det = dx[i]*Sy - dy[i]*Sx + C[i];
       if ( det <= 0 )
-        accept |= 8;
+        accept |= REJECT_EDGEX;
       Sx = left;
       Sy = top+length;
       det = dx[i]*Sy - dy[i]*Sx + C[i];
@@ -250,7 +243,7 @@ int triangle_containsPoint( Triangle_t *t, int Sx, int Sy )
                    dx[2]*Sy - dy[2]*Sx + C[2] };
 
   if ( det[0] <= 0 || det[1] <= 0 || det[2] <= 0 )
-    return 8;
+    return REJECT_EDGEX;
 
-    return 7;
+  return ACCEPT_EDGE0|ACCEPT_EDGE1|ACCEPT_EDGE2;
 }
